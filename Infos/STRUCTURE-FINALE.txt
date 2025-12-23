@@ -1,0 +1,194 @@
+MIGRATION WIZARD - STRUCTURE FINALE
+====================================
+Date: 2025-12-23
+Version: 1.0.23.11
+
+STRUCTURE REORGANISEE AVEC SUCCES
+----------------------------------
+
+La structure du projet a ete completement reorganisee pour simplifier la synchronisation GitHub.
+
+NOUVELLE STRUCTURE
+------------------
+
+C:\Users\jmthomas\Documents\Creation\MigrationWizard\
+|
+├── source\                           ← Depot Git prive (TOUTES les sources)
+│   ├── src\                          ← Code source PowerShell
+│   │   ├── Core\                     ← Moteur (Profile, Export, FileCopy, etc.)
+│   │   ├── Features\                 ← Modules fonctionnels (Wifi, Browsers, Outlook, etc.)
+│   │   ├── UI\                       ← Interface WPF (XAML + event handlers)
+│   │   ├── Modules\                  ← Modules transverses (Logging, BrowserDetection, etc.)
+│   │   └── Assets\                   ← Assets base64 (Logo, Nyan Cat)
+│   │
+│   ├── Tools\                        ← Outils de build + binaires a embarquer
+│   │   ├── Build-PortableExe.ps1    ← Script de compilation principal
+│   │   ├── DesktopOK_x64.exe        ← DesktopOK (positions icones)
+│   │   ├── RZGet.exe                ← Gestionnaire telechargement Logicia
+│   │   ├── Espace Client - Logicia.exe
+│   │   └── Telemaintenance Logicia.exe
+│   │
+│   ├── Infos\                        ← Documentation complete
+│   │   ├── README.md                ← Description publique (pour utilisateurs)
+│   │   ├── DOCUMENTATION-TECHNIQUE.md  ← Architecture moteur complete
+│   │   ├── GUIDE-DEVELOPPEUR.md     ← Guide pour reprendre le developpement
+│   │   ├── SYNC_GITHUB.txt          ← Guide de synchronisation GitHub
+│   │   ├── 01-VUE-ENSEMBLE.md       ← Vue d'ensemble detaillee
+│   │   ├── 02-ARCHITECTURE-TECHNIQUE.md
+│   │   ├── 03-HISTORIQUE-BUGS-FIXES.md
+│   │   └── 04-CHANGELOG-DETAILLE.md
+│   │
+│   ├── Build\                        ← Dossier temporaire (ignore par git)
+│   │   └── MigrationWizard.Merged.ps1  ← Script fusionne temporaire
+│   │
+│   ├── .gitignore                    ← Ignore Build/ et fichiers temporaires
+│   ├── .git\                         ← Depot Git local
+│   └── logo-logicia2.ico             ← Icone de l'application
+│
+└── MigrationWizard-Exe\              ← Depot Git public (EXE uniquement)
+    ├── MigrationWizard.exe           ← Executable compile (43 MB)
+    ├── .git\                         ← Depot Git separe
+    └── README.md                     ← Instructions utilisateur
+
+DEPOTS GITHUB
+-------------
+
+1. Depot PRIVE : https://github.com/Abygail007/Migration_Wizard-Source.git
+   - Contient : Tout le code source (dossier source/)
+   - Branche : main
+   - Remote : "source"
+
+2. Depot PUBLIC : https://github.com/Abygail007/Migration_Wizard.git
+   - Contient : Uniquement MigrationWizard.exe
+   - Branche : main
+   - Remote : "origin"
+
+WORKFLOW SIMPLIFIE
+------------------
+
+1. DEVELOPPER
+   - Editer les fichiers dans source/src/
+   - Tester la syntaxe PowerShell
+
+2. COMPILER
+   cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\source
+   .\Tools\Build-PortableExe.ps1 -Version "1.0.X.X" -IncludeRZGet
+
+   → L'EXE est automatiquement genere dans MigrationWizard-Exe\
+
+3. TESTER
+   - Lancer MigrationWizard-Exe\MigrationWizard.exe
+   - Tester export + import
+   - Verifier les logs dans %USERPROFILE%\MigrationWizard\Logs\
+
+4. COMMIT SOURCES (depot prive)
+   cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\source
+   git add -A
+   git commit -m "Description des changements"
+   git push -u source main
+
+5. PUBLISH EXE (depot public)
+   cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\MigrationWizard-Exe
+   git add MigrationWizard.exe
+   git commit -m "Release v1.0.X.X"
+   git push -u origin main -f
+
+AVANTAGES DE LA NOUVELLE STRUCTURE
+-----------------------------------
+
+✓ Plus besoin de copier manuellement l'EXE apres compilation
+✓ Structure claire separant sources et executable
+✓ Documentation complete dans source/Infos/
+✓ 3 fichiers de documentation crees :
+  - README.md : Description publique du logiciel
+  - DOCUMENTATION-TECHNIQUE.md : Architecture moteur complete (100+ pages)
+  - GUIDE-DEVELOPPEUR.md : Guide complet pour reprendre le developpement
+
+✓ Workflow GitHub simplifie :
+  1. Compiler → L'EXE est automatiquement dans le bon depot
+  2. Push sources vers depot prive
+  3. Push EXE vers depot public
+
+FICHIERS CREES/MODIFIES
+------------------------
+
+NOUVEAUX FICHIERS :
+- source/Infos/README.md
+- source/Infos/DOCUMENTATION-TECHNIQUE.md
+- source/Infos/GUIDE-DEVELOPPEUR.md
+- STRUCTURE-FINALE.txt (ce fichier)
+
+FICHIERS MODIFIES :
+- source/Tools/Build-PortableExe.ps1 (chemin EXE adapte)
+- source/Infos/SYNC_GITHUB.txt (chemins mis a jour)
+- source/src/UI/MigrationWizard.xaml (fix caracteres XML < et >)
+
+BUGS CORRIGES DANS CETTE SESSION
+---------------------------------
+
+1. Bug XAML - Caracteres speciaux non echappes (lignes 921-922)
+   AVANT : <Button Content="<  Precedent"/>
+   APRES : <Button Content="&lt;  Precedent"/>
+
+2. Structure dossiers optimisee pour GitHub
+   AVANT : Github/source/
+   APRES : source/ (directement a la racine)
+
+3. Chemin EXE automatique
+   AVANT : Github/Build/MigrationWizard.exe (manuel copy needed)
+   APRES : MigrationWizard-Exe/MigrationWizard.exe (automatique)
+
+VERSIONS COMPILEES
+------------------
+
+v1.0.23.9  - Fix XAML caracteres speciaux
+v1.0.23.10 - Test avec nouvelle structure Github/source
+v1.0.23.11 - Test final avec structure source/ a la racine
+
+PROCHAINES ETAPES
+-----------------
+
+1. Tester l'EXE v1.0.23.11 en conditions reelles (export + import)
+2. Si OK, pousser les sources vers GitHub (depot prive)
+3. Pousser l'EXE vers GitHub (depot public)
+4. Creer un tag de version v1.0.23.11 sur GitHub
+
+DOCUMENTATION DISPONIBLE
+-------------------------
+
+Pour comprendre et reprendre le projet, consulter les fichiers dans source/Infos/ :
+
+- README.md
+  → Description publique du logiciel (fonctionnalites, utilisation)
+  → A lire en premier
+
+- GUIDE-DEVELOPPEUR.md
+  → Guide complet pour reprendre le developpement
+  → Setup environnement, workflow, compilation, debug
+  → FAQ developpeur
+
+- DOCUMENTATION-TECHNIQUE.md
+  → Architecture moteur complete (moteur, chassis, composants)
+  → Flux de donnees export/import
+  → Systeme de build PS2EXE
+  → Contraintes et solutions PS2EXE
+  → Formats de donnees (manifests JSON)
+
+- SYNC_GITHUB.txt
+  → Guide de synchronisation GitHub (depot prive + public)
+
+- 01-VUE-ENSEMBLE.md
+- 02-ARCHITECTURE-TECHNIQUE.md
+- 03-HISTORIQUE-BUGS-FIXES.md
+- 04-CHANGELOG-DETAILLE.md
+
+SUPPORT
+-------
+
+Pour toute question technique :
+- Consulter GUIDE-DEVELOPPEUR.md (FAQ section)
+- Consulter DOCUMENTATION-TECHNIQUE.md (architecture)
+- Consulter les logs dans %USERPROFILE%\MigrationWizard\Logs\
+
+Auteur original : Jean-Mickael Thomas (Logicia)
+Reorganisation et documentation : 2025-12-23

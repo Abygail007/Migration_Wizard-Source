@@ -1,0 +1,74 @@
+MigrationWizard - Guide de synchro GitHub
+=========================================
+
+Objectif
+--------
+- Le depot prive "Migration_Wizard-Source" contient TOUTES les sources.
+- Le depot public "Migration_Wizard" contient UNIQUEMENT MigrationWizard.exe.
+
+Chemins locaux
+--------------
+- Sources : C:\Users\jmthomas\Documents\Creation\MigrationWizard\source
+- Exe     : C:\Users\jmthomas\Documents\Creation\MigrationWizard\MigrationWizard-Exe
+
+Remotes
+-------
+- Source (prive) : https://github.com/Abygail007/Migration_Wizard-Source.git
+- Exe (public)   : https://github.com/Abygail007/Migration_Wizard.git
+
+1) Compiler l'EXE
+-----------------
+Depuis le dossier source :
+  cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\source
+  .\Tools\Build-PortableExe.ps1 -Version "1.0.X.X" -IncludeRZGet
+
+L'EXE est automatiquement genere dans MigrationWizard-Exe !
+
+2) Pousser les SOURCES (depot prive)
+-----------------------------------
+Ouvrir un terminal PowerShell dans le dossier source :
+  cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\source
+
+Verifier l'etat :
+  git status -sb
+
+Ajouter et committer :
+  git add -A
+  git commit -m "Sync sources"
+
+Pousser vers le depot prive :
+  git push -u source main
+
+Note: le dossier Build/ est ignore via .gitignore.
+
+3) Pousser l'EXE (depot public)
+-------------------------------
+L'EXE est deja dans le bon dossier apres compilation !
+
+Dans le dossier exe :
+  cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\MigrationWizard-Exe
+
+Committer et pousser :
+  git add MigrationWizard.exe
+  git commit -m "Publish MigrationWizard.exe"
+  git push -u origin main -f
+
+Important
+---------
+- Le push sur Migration_Wizard (public) est force (-f) pour garder uniquement l'exe.
+
+4) Remettre les remotes si besoin
+---------------------------------
+Dans le depot source :
+  cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\source
+  git remote add source https://github.com/Abygail007/Migration_Wizard-Source.git
+
+Dans le depot exe :
+  cd C:\Users\jmthomas\Documents\Creation\MigrationWizard\MigrationWizard-Exe
+  git remote add origin https://github.com/Abygail007/Migration_Wizard.git
+
+5) Verifier que le depot source est prive
+-----------------------------------------
+Sur GitHub :
+  Settings > General > Repository visibility
+

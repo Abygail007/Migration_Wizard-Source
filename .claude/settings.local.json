@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./Tools/Build-PortableExe.ps1 -Version \"1.0.0.1\" -IncludeRZGet -KeepMergedScript)",
+      "Bash(powershell.exe:*)",
+      "Bash(while read f)",
+      "Bash(do ls -lh \"$f\")",
+      "Bash(done)",
+      "Bash(powershell -Command:*)",
+      "Bash(./Tools/Build-PortableExe.ps1 -Version \"1.0.0.1\" -IncludeRZGet)",
+      "Bash(powershell -File:*)",
+      "Bash(robocopy:*)",
+      "Bash(copy:*)",
+      "Bash(Test-Path \"C:\\Users\\jmthomas\\.claude-worktrees\\Github\\blissful-roentgen\\Tools\\nyan-cat-gif-1.jpg\")",
+      "Bash(Test-Path \"C:\\Users\\jmthomas\\Documents\\Creation\\MigrationWizard\\Github\\Tools\\desktopok.exe\")",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

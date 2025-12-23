@@ -1,0 +1,20 @@
+# Dossier de logs de MigrationWizard
+Logs/
+
+# Fichiers de log éventuels à la racine ou ailleurs
+*.log
+*.html
+
+# Divers fichiers temporaires
+*.tmp
+*.bak
+
+# Dossier Build (fichiers temporaires de compilation)
+Build/
+
+# Binaires Tools (trop gros pour Git)
+Tools/*.exe
+Tools/*.dll
+
+# Mais garder les scripts PowerShell
+!Tools/*.ps1
