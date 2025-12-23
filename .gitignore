@@ -1,5 +1,6 @@
 # Dossier de logs de MigrationWizard
 Logs/
+.claude/
 
 # Fichiers de log éventuels à la racine ou ailleurs
 *.log
@@ -9,12 +10,6 @@ Logs/
 *.tmp
 *.bak
 
-# Dossier Build (fichiers temporaires de compilation)
+# Outils locaux (ex: RuckZuck) non versionnés
+Tools/
 Build/
-
-# Binaires Tools (trop gros pour Git)
-Tools/*.exe
-Tools/*.dll
-
-# Mais garder les scripts PowerShell
-!Tools/*.ps1
