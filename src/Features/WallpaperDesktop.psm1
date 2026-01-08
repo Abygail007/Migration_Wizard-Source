@@ -141,8 +141,8 @@ function Export-DesktopPositions {
 
         Write-MWLogInfo "DesktopOK: Sauvegarde positions -> $saveFile"
 
-        # DesktopOK commande: /SaveLayout fichier.dok
-        $proc = Start-Process -FilePath $desktopOK -ArgumentList "/SaveLayout `"$saveFile`"" -NoNewWindow -Wait -PassThru
+        # DesktopOK commande: /save /silent fichier.dok
+        $proc = Start-Process -FilePath $desktopOK -ArgumentList "/save /silent `"$saveFile`"" -NoNewWindow -Wait -PassThru
 
         if ($proc.ExitCode -eq 0 -and (Test-Path $saveFile)) {
             Write-MWLogInfo "DesktopOK: Positions sauvegardées avec succès"
@@ -265,8 +265,8 @@ function Import-DesktopPositions {
 
         Write-MWLogInfo "DesktopOK: Restauration positions depuis $saveFile"
 
-        # DesktopOK commande: /RestoreLayout fichier.dok
-        $proc = Start-Process -FilePath $desktopOK -ArgumentList "/RestoreLayout `"$saveFile`"" -NoNewWindow -Wait -PassThru
+        # DesktopOK commande: /load /silent fichier.dok
+        $proc = Start-Process -FilePath $desktopOK -ArgumentList "/load /silent `"$saveFile`"" -NoNewWindow -Wait -PassThru
 
         if ($proc.ExitCode -eq 0) {
             Write-MWLogInfo "DesktopOK: Positions restaurées avec succès"
