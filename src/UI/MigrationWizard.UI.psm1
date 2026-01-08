@@ -895,8 +895,17 @@ function Initialize-Dashboard {
         })
     }
 
-    # Rafraîchir au démarrage
-    & $refreshDashboard
+    # Rafraîchir au démarrage de manière asynchrone pour éviter blocage UI
+    try {
+        $script:Window.Dispatcher.BeginInvoke(
+            [System.Windows.Threading.DispatcherPriority]::Background,
+            [Action] { & $refreshDashboard }
+        )
+    }
+    catch {
+        Write-MWLogWarning "Impossible de rafraîchir Dashboard en async, fallback synchrone: $_"
+        & $refreshDashboard
+    }
 
     Write-MWLogInfo "Dashboard initialisé"
 }
