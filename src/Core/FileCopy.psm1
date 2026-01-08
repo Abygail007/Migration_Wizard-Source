@@ -138,14 +138,15 @@ try {
 
         $robocopyArgs += @(
             '/COPY:DAT',    # Données, Attributs, Timestamps (pas ACL pour éviter les soucis de permissions)
-            '/R:2',         # 2 tentatives en cas d'erreur
-            '/W:5',         # 5 secondes d'attente entre tentatives
-            '/MT:8',        # 8 threads (plus rapide sur gros volumes)
+            '/R:1',         # 1 seule tentative en cas d'erreur (plus rapide)
+            '/W:2',         # 2 secondes d'attente entre tentatives (au lieu de 5)
+            '/MT:16',       # 16 threads au lieu de 8 (beaucoup plus rapide)
             '/NFL',         # Pas de liste de fichiers
             '/NDL',         # Pas de liste de dossiers
             '/NP',          # Pas de pourcentage
             '/NJH',         # Pas de header
-            '/NJS'          # Pas de summary
+            '/NJS',         # Pas de summary
+            '/J'            # Mode unbuffered (plus rapide sur gros fichiers)
         )
 
         # Exclusions par défaut (à enrichir selon besoins)

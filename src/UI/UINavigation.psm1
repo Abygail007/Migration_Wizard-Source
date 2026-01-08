@@ -61,7 +61,10 @@ function Show-UIPage {
         $page.Visibility = 'Visible'
         Write-MWLogInfo "Page $PageNumber affichée"
     }
-    
+
+    # Forcer le rafraîchissement de l'UI
+    Update-UI
+
     # CORRECTION: Gérer visibilité panelExport/panelImport sur page 3
     if ($PageNumber -eq 3 -and $IsExport -ne $null) {
         $panelExport = $Window.FindName('panelExport')

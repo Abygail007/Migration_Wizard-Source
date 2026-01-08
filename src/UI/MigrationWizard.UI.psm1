@@ -150,23 +150,54 @@ function Hide-ConditionalControls {
     }
 }
 
+function Update-UI {
+    <#
+    .SYNOPSIS
+    Force le rafraîchissement de l'interface WPF pour éviter qu'elle freeze
+    #>
+    try {
+        # Dispatcher WPF pour forcer le rendu
+        if ($script:Window -and $script:Window.Dispatcher) {
+            $script:Window.Dispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background)
+        }
+
+        # DoEvents pour Windows Forms (backup)
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+    catch {
+        # Ignorer les erreurs silencieusement
+    }
+}
+
 function Prevent-SystemSleep {
     try {
-        $code = @'
+        # Constantes pour SetThreadExecutionState
+        $ES_CONTINUOUS = [uint32]0x80000000
+        $ES_SYSTEM_REQUIRED = [uint32]0x00000001
+        $ES_DISPLAY_REQUIRED = [uint32]0x00000002
+        $ES_AWAYMODE_REQUIRED = [uint32]0x00000040
+
+        # Vérifier si le type existe déjà
+        $typeExists = $false
+        try {
+            [MigrationWizard.PowerHelper] | Out-Null
+            $typeExists = $true
+        } catch {
+            $typeExists = $false
+        }
+
+        if (-not $typeExists) {
+            $code = @'
 [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
 public static extern uint SetThreadExecutionState(uint esFlags);
 '@
-        # Constantes pour SetThreadExecutionState (en décimal pour éviter overflow)
-        $ES_CONTINUOUS = [uint32]2147483648
-        $ES_SYSTEM_REQUIRED = [uint32]1
-        $ES_AWAYMODE_REQUIRED = [uint32]64
-
-        if (-not ([System.Management.Automation.PSTypeName]'MWPowerHelper').Type) {
             Add-Type -MemberDefinition $code -Namespace 'MigrationWizard' -Name 'PowerHelper'
         }
 
-        [MigrationWizard.PowerHelper]::SetThreadExecutionState($ES_CONTINUOUS -bor $ES_SYSTEM_REQUIRED -bor $ES_AWAYMODE_REQUIRED) | Out-Null
-        Write-MWLogInfo "Prévention mise en veille activée"
+        # Empêcher veille système + écran + away mode
+        $flags = $ES_CONTINUOUS -bor $ES_SYSTEM_REQUIRED -bor $ES_DISPLAY_REQUIRED -bor $ES_AWAYMODE_REQUIRED
+        [MigrationWizard.PowerHelper]::SetThreadExecutionState($flags) | Out-Null
+        Write-MWLogInfo "Prévention mise en veille activée (système + écran)"
     }
     catch {
         Write-MWLogWarning "Impossible d'empêcher mise en veille : $($_.Exception.Message)"

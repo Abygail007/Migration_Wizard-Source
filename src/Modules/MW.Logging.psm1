@@ -1,6 +1,9 @@
 ﻿# Module : MW.Logging
 # Gestion centralisée des logs pour MigrationWizard
 
+# Compteur pour rafraîchir l'UI tous les N logs
+$script:LogCounter = 0
+
 function Get-MWRootDirectory {
     <#
         .SYNOPSIS
@@ -106,6 +109,17 @@ function Write-MWLog {
             catch {
                 # Autre type d'erreur, on arrête
                 break
+            }
+        }
+
+        # Rafraîchir l'UI tous les 10 logs pour éviter le freeze
+        $script:LogCounter++
+        if ($script:LogCounter -ge 10) {
+            $script:LogCounter = 0
+            try {
+                Update-UI
+            } catch {
+                # Ignorer si Update-UI n'existe pas encore
             }
         }
     }
