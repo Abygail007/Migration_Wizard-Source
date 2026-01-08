@@ -34,6 +34,21 @@ function New-MWExportSnapshot {
         if ($null -ne $cmd) {
             $apps = Get-MWApplicationsForExport
             Write-MWLogSafe -Message "Applications : $($apps.Count) detectees." -Level 'INFO'
+
+            # Générer le script d'installation automatique
+            if ($apps.Count -gt 0) {
+                $installScriptPath = Join-Path $OutRoot 'Install-Applications.ps1'
+                $cmdScript = Get-Command -Name New-MWApplicationsInstallScript -ErrorAction SilentlyContinue
+                if ($null -ne $cmdScript) {
+                    try {
+                        New-MWApplicationsInstallScript -Applications $apps -OutputPath $installScriptPath
+                        Write-MWLogSafe -Message "Script d'installation généré : $installScriptPath" -Level 'INFO'
+                    }
+                    catch {
+                        Write-MWLogSafe -Message "Erreur lors de la génération du script d'installation : $_" -Level 'WARN'
+                    }
+                }
+            }
         }
         else {
             Write-MWLogSafe -Message "Get-MWApplicationsForExport non disponible, section Applications vide." -Level 'WARN'

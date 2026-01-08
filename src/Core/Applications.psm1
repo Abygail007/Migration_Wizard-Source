@@ -761,6 +761,238 @@ function Show-MWApplicationsImportPlan {
     Install-MWApplicationsFromExport -ApplicationsToInstall $toInstall
 }
 
+function New-MWApplicationsInstallScript {
+    <#
+        .SYNOPSIS
+        Génère un script PowerShell d'installation automatique des applications.
+
+        .DESCRIPTION
+        Crée un fichier Install-Applications.ps1 qui contient toutes les applications
+        exportées avec leurs IDs RuckZuck. Le script peut ensuite être exécuté avec
+        une liste spécifique d'applications à installer.
+
+        .PARAMETER Applications
+        Liste des applications exportées (avec RuckZuckId).
+
+        .PARAMETER OutputPath
+        Chemin complet du fichier .ps1 à générer.
+
+        .EXAMPLE
+        $apps = Get-MWApplicationsForExport
+        New-MWApplicationsInstallScript -Applications $apps -OutputPath "D:\Client\PC\Install-Applications.ps1"
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [Object[]]$Applications,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OutputPath
+    )
+
+    Write-MWLogSafe -Message "Génération du script d'installation : $OutputPath" -Level 'INFO'
+
+    if (-not $Applications -or $Applications.Count -eq 0) {
+        Write-MWLogSafe -Message "Aucune application à inclure dans le script" -Level 'WARN'
+        return
+    }
+
+    # Compteur d'apps avec RZGet ID
+    $withRZGet = ($Applications | Where-Object { -not [string]::IsNullOrWhiteSpace($_.RuckZuckId) }).Count
+
+    # Entête du script
+    $scriptContent = @"
+# ==============================================================================
+# Install-Applications.ps1
+# Script généré automatiquement par MigrationWizard
+# ==============================================================================
+#
+# Ce script permet d'installer automatiquement les applications détectées
+# lors de l'export du profil utilisateur.
+#
+# Applications détectées : $($Applications.Count)
+# Applications avec RuckZuck ID : $withRZGet
+#
+# Usage:
+#   .\Install-Applications.ps1 -Apps "Google Chrome","LibreOffice"
+#   .\Install-Applications.ps1 -Apps "Google Chrome"
+#
+# ==============================================================================
+
+param(
+    [Parameter(Mandatory = `$false)]
+    [string[]]`$Apps = @()
+)
+
+`$ErrorActionPreference = 'Continue'
+
+# ==============================================================================
+# CONFIGURATION
+# ==============================================================================
+
+# Catalogue des applications disponibles
+`$AppCatalog = @{
+"@
+
+    # Ajouter chaque application au catalogue
+    foreach ($app in $Applications) {
+        $appName = $app.Name -replace '"', '\"'
+        $rzId = if ([string]::IsNullOrWhiteSpace($app.RuckZuckId)) { '$null' } else { "`"$($app.RuckZuckId)`"" }
+        $publisher = if ([string]::IsNullOrWhiteSpace($app.Publisher)) { '' } else { $app.Publisher -replace '"', '\"' }
+
+        $scriptContent += @"
+
+    "$appName" = @{
+        RZGetId   = $rzId
+        Publisher = "$publisher"
+        Version   = "$($app.Version)"
+    }
+"@
+    }
+
+    # Fermeture du hashtable et reste du script
+    $scriptContent += @"
+
+}
+
+# ==============================================================================
+# FONCTION: Extraire RZGet depuis base64 embarqué
+# ==============================================================================
+function Get-RZGetPath {
+    # Recherche de RZGet.exe embarqué dans MigrationWizard
+    `$tempDir = Join-Path `$env:TEMP 'MigrationWizard'
+    `$rzgetPath = Join-Path `$tempDir 'RZGet.exe'
+
+    if (Test-Path `$rzgetPath) {
+        Write-Host "[OK] RZGet.exe trouvé : `$rzgetPath" -ForegroundColor Green
+        return `$rzgetPath
+    }
+
+    # Essayer dans le PATH
+    `$rzget = Get-Command 'rzget.exe' -ErrorAction SilentlyContinue
+    if (`$rzget) {
+        Write-Host "[OK] RZGet.exe trouvé dans PATH : `$(`$rzget.Source)" -ForegroundColor Green
+        return `$rzget.Source
+    }
+
+    Write-Host "[ERREUR] RZGet.exe introuvable" -ForegroundColor Red
+    Write-Host "Veuillez exécuter ce script depuis MigrationWizard ou installer RuckZuck" -ForegroundColor Yellow
+    return `$null
+}
+
+# ==============================================================================
+# FONCTION: Installer une application via RZGet
+# ==============================================================================
+function Install-Application {
+    param(
+        [string]`$AppName,
+        [hashtable]`$AppInfo
+    )
+
+    if (-not `$AppInfo.RZGetId) {
+        Write-Host "[SKIP] `$AppName - Pas de RuckZuck ID disponible" -ForegroundColor Yellow
+        return `$false
+    }
+
+    `$rzPath = Get-RZGetPath
+    if (-not `$rzPath) {
+        return `$false
+    }
+
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "Installation de : `$AppName" -ForegroundColor Cyan
+    Write-Host "RuckZuck ID     : `$(`$AppInfo.RZGetId)" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+
+    try {
+        & `$rzPath install "`$(`$AppInfo.RZGetId)" --silent
+
+        if (`$LASTEXITCODE -eq 0) {
+            Write-Host "[OK] `$AppName installé avec succès" -ForegroundColor Green
+            return `$true
+        } else {
+            Write-Host "[ERREUR] Échec installation `$AppName (code : `$LASTEXITCODE)" -ForegroundColor Red
+            return `$false
+        }
+    }
+    catch {
+        Write-Host "[ERREUR] Exception lors de l'installation de `$AppName : `$_" -ForegroundColor Red
+        return `$false
+    }
+}
+
+# ==============================================================================
+# MAIN
+# ==============================================================================
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "     INSTALLATION AUTOMATIQUE DES APPLICATIONS" -ForegroundColor Cyan
+Write-Host "     Généré par MigrationWizard" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host ""
+
+if (-not `$Apps -or `$Apps.Count -eq 0) {
+    Write-Host "[INFO] Aucune application spécifiée" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Applications disponibles :" -ForegroundColor White
+    `$AppCatalog.Keys | Sort-Object | ForEach-Object {
+        `$hasRZ = if (`$AppCatalog[`$_].RZGetId) { "[RZ]" } else { "    " }
+        Write-Host "  `$hasRZ `$_" -ForegroundColor Gray
+    }
+    Write-Host ""
+    Write-Host "Usage: .\Install-Applications.ps1 -Apps `"App1`",`"App2`"" -ForegroundColor White
+    exit 0
+}
+
+Write-Host "Applications à installer : `$(`$Apps.Count)" -ForegroundColor White
+Write-Host ""
+
+`$success = 0
+`$failed = 0
+`$skipped = 0
+
+foreach (`$appName in `$Apps) {
+    if (-not `$AppCatalog.ContainsKey(`$appName)) {
+        Write-Host "[SKIP] `$appName - Application inconnue" -ForegroundColor Yellow
+        `$skipped++
+        continue
+    }
+
+    `$result = Install-Application -AppName `$appName -AppInfo `$AppCatalog[`$appName]
+
+    if (`$result) {
+        `$success++
+    } else {
+        `$failed++
+    }
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "                    RÉSUMÉ" -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "Succès  : `$success" -ForegroundColor Green
+Write-Host "Échecs  : `$failed" -ForegroundColor Red
+Write-Host "Ignorés : `$skipped" -ForegroundColor Yellow
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host ""
+"@
+
+    # Écrire le fichier
+    try {
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($OutputPath, $scriptContent, $utf8NoBom)
+        Write-MWLogSafe -Message "Script d'installation généré avec succès : $OutputPath" -Level 'INFO'
+        return $true
+    }
+    catch {
+        Write-MWLogSafe -Message "Erreur lors de la génération du script : $_" -Level 'ERROR'
+        return $false
+    }
+}
+
 Export-ModuleMember -Function `
     Get-MWInstalledApplications, `
     Get-MWApplicationsForExport, `
@@ -770,4 +1002,5 @@ Export-ModuleMember -Function `
     Find-MWRuckZuckPackageForApp, `
     Get-MWApplicationsImportPlan, `
     Invoke-MWApplicationsInstall, `
-    Show-MWApplicationsImportPlan
+    Show-MWApplicationsImportPlan, `
+    New-MWApplicationsInstallScript

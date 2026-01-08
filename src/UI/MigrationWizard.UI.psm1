@@ -1417,27 +1417,55 @@ function Handle-RunClick {
                 if ($appsToInstall.Count -gt 0) {
                     Write-MWLogInfo "Installation de $($appsToInstall.Count) application(s)..."
                     Update-ProgressUI -Message "Installation des applications..." -Percent 5
-                    
-                    foreach ($app in $appsToInstall) {
+
+                    # Vérifier si le script Install-Applications.ps1 existe
+                    $installScriptPath = Join-Path $script:UI.TbImportSrc.Text 'Install-Applications.ps1'
+
+                    if (Test-Path $installScriptPath) {
+                        Write-MWLogInfo "Utilisation du script d'installation: $installScriptPath"
+
+                        # Extraire les noms des applications sélectionnées
+                        $appNames = $appsToInstall | ForEach-Object { $_.DisplayName }
+
                         try {
-                            Write-MWLogInfo "Installation : $($app.DisplayName)"
-                            Update-ProgressUI -Message "Installation : $($app.DisplayName)" -Percent 10
-                            
-                            if ($app.WingetId) {
-                                # Installer via winget
-                                $result = winget install --id $app.WingetId --silent --accept-source-agreements --accept-package-agreements 2>&1
-                                Write-MWLogInfo "winget: $result"
-                            }
-                            elseif ($app.RuckZuckId) {
-                                # Installer via RuckZuck
-                                $rzPath = Get-MWRuckZuckPath
-                                if ($rzPath -and (Test-Path $rzPath)) {
-                                    & $rzPath install "$($app.RuckZuckId)" | Out-Null
-                                }
-                            }
+                            # Lancer le script avec UNIQUEMENT les apps cochées
+                            Write-MWLogInfo "Lancement: Install-Applications.ps1 -Apps $($appNames -join ', ')"
+                            & powershell.exe -ExecutionPolicy Bypass -File $installScriptPath -Apps $appNames
+                            Write-MWLogInfo "Installation des applications terminée"
                         }
                         catch {
-                            Write-MWLogWarning "Échec installation $($app.DisplayName): $($_.Exception.Message)"
+                            Write-MWLogWarning "Erreur lors de l'exécution du script d'installation: $($_.Exception.Message)"
+                        }
+                    }
+                    else {
+                        Write-MWLogWarning "Script Install-Applications.ps1 introuvable, fallback sur méthode directe"
+
+                        # Fallback: méthode directe (ancien code)
+                        foreach ($app in $appsToInstall) {
+                            try {
+                                Write-MWLogInfo "Installation : $($app.DisplayName)"
+                                Update-ProgressUI -Message "Installation : $($app.DisplayName)" -Percent 10
+
+                                if ($app.RuckZuckId) {
+                                    # Installer via RuckZuck
+                                    $rzPath = Get-MWRuckZuckPath
+                                    if ($rzPath -and (Test-Path $rzPath)) {
+                                        Write-MWLogInfo "Installation via RZGet: $($app.RuckZuckId)"
+                                        & $rzPath install "$($app.RuckZuckId)" --silent
+                                        if ($LASTEXITCODE -eq 0) {
+                                            Write-MWLogInfo "Installation OK: $($app.DisplayName)"
+                                        } else {
+                                            Write-MWLogWarning "Échec installation (code $LASTEXITCODE): $($app.DisplayName)"
+                                        }
+                                    }
+                                }
+                                else {
+                                    Write-MWLogWarning "Pas de RuckZuckId pour: $($app.DisplayName)"
+                                }
+                            }
+                            catch {
+                                Write-MWLogWarning "Échec installation $($app.DisplayName): $($_.Exception.Message)"
+                            }
                         }
                     }
                 }
