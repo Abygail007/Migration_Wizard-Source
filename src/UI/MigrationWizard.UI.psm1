@@ -859,64 +859,38 @@ function Initialize-Dashboard {
         $dgDashExports.Add_MouseDoubleClick({
             param($sender, $e)
 
-            # Récupérer l'export sélectionné
-            $selectedExport = $sender.SelectedItem
-            if (-not $selectedExport) { return }
+            try {
+                # Récupérer l'export sélectionné
+                $selectedExport = $sender.SelectedItem
+                if (-not $selectedExport) { return }
 
-            $exportPath = $selectedExport.Path
-            if (-not $exportPath -or -not (Test-Path $exportPath)) {
-                [System.Windows.MessageBox]::Show(
-                    "Le chemin de l'export est invalide ou introuvable.",
-                    "Erreur",
-                    'OK',
-                    'Error'
-                )
-                return
+                $exportPath = $selectedExport.Path
+                if (-not $exportPath -or -not (Test-Path $exportPath)) {
+                    [System.Windows.MessageBox]::Show(
+                        "Le chemin de l'export est invalide ou introuvable.",
+                        "Erreur",
+                        'OK',
+                        'Error'
+                    )
+                    return
+                }
+
+                Write-MWLogInfo "Double-clic sur export: $($selectedExport.ClientName) - Lancement import"
+
+                # Passer en mode Import et remplir le chemin
+                if ($script:UI.RbImport) {
+                    $script:UI.RbImport.IsChecked = $true
+                }
+                if ($script:UI.TbImportSrc) {
+                    $script:UI.TbImportSrc.Text = $exportPath
+                }
+
+                # Naviguer simplement vers la page de choix mode (page 1)
+                # L'utilisateur devra juste cliquer "Suivant" mais le chemin sera déjà rempli
+                Show-UIPage -PageNumber 1 -Window $script:Window
             }
-
-            Write-MWLogInfo "Double-clic sur export: $($selectedExport.ClientName) - Lancement import automatique"
-
-            # Passer en mode Import
-            $script:UI.RbImport.IsChecked = $true
-
-            # Remplir le chemin source
-            $script:UI.TbImportSrc.Text = $exportPath
-
-            # Naviguer vers la page Import (page 21 - sélection client)
-            Show-UIPage -PageNumber 21 -Window $script:Window
-
-            # Forcer le chargement du client sélectionné
-            if ($script:UI.lstClients) {
-                try {
-                    # Remplir la liste des clients
-                    $drives = Get-AvailableDrives
-                    $exports = @()
-                    foreach ($drv in $drives) {
-                        $drvPath = "$($drv.Name):\"
-                        $foundExports = Find-MWExports -BasePath $drvPath
-                        if ($foundExports) {
-                            $exports += $foundExports
-                        }
-                    }
-
-                    if ($exports.Count -gt 0) {
-                        $arrayList = New-Object System.Collections.ArrayList
-                        foreach ($exp in $exports) {
-                            [void]$arrayList.Add($exp)
-                        }
-                        $script:UI.lstClients.ItemsSource = $arrayList
-
-                        # Sélectionner automatiquement l'export cliqué
-                        $matchingExport = $exports | Where-Object { $_.Path -eq $exportPath }
-                        if ($matchingExport) {
-                            $script:UI.lstClients.SelectedItem = $matchingExport
-                            Write-MWLogInfo "Client sélectionné automatiquement: $($matchingExport.ClientName)"
-                        }
-                    }
-                }
-                catch {
-                    Write-MWLogWarning "Erreur lors de la sélection automatique du client: $_"
-                }
+            catch {
+                Write-MWLogError "Erreur double-clic Dashboard: $_"
             }
         })
     }
