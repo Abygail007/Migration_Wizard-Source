@@ -698,7 +698,7 @@ function Initialize-UIData {
 function Initialize-Dashboard {
     <#
     .SYNOPSIS
-    Initialise le tableau de bord avec les exports existants
+    Initialise le tableau de bord avec historique centralisé
     #>
     Write-MWLogInfo "Initialisation du Dashboard..."
 
@@ -716,15 +716,15 @@ function Initialize-Dashboard {
     $txtDashLastImport = $script:Window.FindName('txtDashLastImport')
     $txtDashLastImportDate = $script:Window.FindName('txtDashLastImportDate')
 
-    # Fonction pour rafraîchir le dashboard
+    # Fonction pour rafraîchir le dashboard depuis l'historique
     function Refresh-DashboardData {
-        Write-MWLogInfo "Rafraîchissement du Dashboard..."
+        Write-MWLogInfo "Rafraîchissement du Dashboard depuis historique..."
 
-        # Récupérer la liste des exports
-        $exports = @(Get-MWExportsList)  # Force array pour éviter PowerShell unroll
+        # Récupérer depuis le fichier d'historique (pas de scan disque!)
+        $exports = @(Get-MWDashboardHistory)
 
         if ($exports.Count -eq 0) {
-            # Aucun export trouvé
+            # Aucun export
             if ($dgDashExports) { $dgDashExports.Visibility = 'Collapsed' }
             if ($txtDashNoExports) { $txtDashNoExports.Visibility = 'Visible' }
 
@@ -737,10 +737,9 @@ function Initialize-Dashboard {
             if ($txtDashLastImportDate) { $txtDashLastImportDate.Text = "" }
         }
         else {
-            # Afficher les exports dans le DataGrid
+            # Afficher les exports
             if ($dgDashExports) {
                 $dgDashExports.Visibility = 'Visible'
-                # Utiliser ArrayList pour compatibilité PowerShell/WPF
                 $arrayList = New-Object System.Collections.ArrayList
                 foreach ($export in $exports) {
                     [void]$arrayList.Add($export)
@@ -749,28 +748,18 @@ function Initialize-Dashboard {
             }
             if ($txtDashNoExports) { $txtDashNoExports.Visibility = 'Collapsed' }
 
-            # Calculer et afficher les stats
-            $stats = Get-MWDashboardStats -Exports $exports
+            # Stats
+            $stats = Get-MWDashboardStats
 
             if ($txtDashTotalExports) { $txtDashTotalExports.Text = $stats.TotalExports.ToString() }
             if ($txtDashTotalSize) { $txtDashTotalSize.Text = "{0:N2} GB" -f $stats.TotalSizeGB }
-
-            if ($txtDashLastExport) {
-                $txtDashLastExport.Text = $stats.LastExportClient
-            }
-            if ($txtDashLastExportDate -and $stats.LastExportDate) {
-                $txtDashLastExportDate.Text = $stats.LastExportDate
-            }
-
-            if ($txtDashLastImport) {
-                $txtDashLastImport.Text = $stats.LastImportClient
-            }
-            if ($txtDashLastImportDate -and $stats.LastImportDate) {
-                $txtDashLastImportDate.Text = $stats.LastImportDate
-            }
+            if ($txtDashLastExport) { $txtDashLastExport.Text = $stats.LastExportClient }
+            if ($txtDashLastExportDate) { $txtDashLastExportDate.Text = $stats.LastExportDate }
+            if ($txtDashLastImport) { $txtDashLastImport.Text = $stats.LastImportClient }
+            if ($txtDashLastImportDate) { $txtDashLastImportDate.Text = $stats.LastImportDate }
         }
 
-        Write-MWLogInfo "Dashboard rafraîchi: $($exports.Count) export(s) trouvé(s)"
+        Write-MWLogInfo "Dashboard rafraîchi: $($exports.Count) export(s)"
     }
 
     # Handler: Bouton Actualiser
@@ -783,116 +772,133 @@ function Initialize-Dashboard {
     # Handler: Bouton Commencer
     if ($btnDashStart) {
         $btnDashStart.Add_Click({
-            Write-MWLogInfo "Démarrage nouvel export/import depuis Dashboard"
+            Write-MWLogInfo "Démarrage nouvel export/import"
             Show-UIPage -PageNumber 1 -Window $script:Window
         })
     }
 
-    # Handler: Boutons Supprimer dans le DataGrid
+    # Handler: Boutons dans le DataGrid (Import, Export Inc., Supprimer)
     if ($dgDashExports) {
         $dgDashExports.Add_LoadingRow({
             param($sender, $e)
 
-            # Récupérer le bouton Supprimer dans la ligne
             $row = $e.Row
             if ($row) {
                 $row.Loaded += {
                     param($rowSender, $rowE)
 
-                    $deleteButton = $null
-                    # Trouver le bouton dans la ligne
+                    # Trouver le StackPanel contenant les 3 boutons
                     $presenter = [System.Windows.Media.VisualTreeHelper]::GetChild($rowSender, 0)
                     if ($presenter) {
                         for ($i = 0; $i -lt [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($presenter); $i++) {
-                            $child = [System.Windows.Media.VisualTreeHelper]::GetChild($presenter, $i)
-                            if ($child -is [System.Windows.Controls.ContentPresenter]) {
-                                $deleteButton = $child.Content
-                                if ($deleteButton -is [System.Windows.Controls.Button]) {
+                            $cell = [System.Windows.Media.VisualTreeHelper]::GetChild($presenter, $i)
+                            if ($cell -is [System.Windows.Controls.ContentPresenter]) {
+                                $stackPanel = $cell.Content
+                                if ($stackPanel -is [System.Windows.Controls.StackPanel]) {
+                                    # Récupérer les 3 boutons
+                                    $btnImport = $null
+                                    $btnIncremental = $null
+                                    $btnDelete = $null
+
+                                    for ($j = 0; $j -lt $stackPanel.Children.Count; $j++) {
+                                        $btn = $stackPanel.Children[$j]
+                                        if ($btn -is [System.Windows.Controls.Button]) {
+                                            if ($btn.Name -eq 'btnDashImport') { $btnImport = $btn }
+                                            elseif ($btn.Name -eq 'btnDashIncremental') { $btnIncremental = $btn }
+                                            elseif ($btn.Name -eq 'btnDashDelete') { $btnDelete = $btn }
+                                        }
+                                    }
+
+                                    # BOUTON IMPORT
+                                    if ($btnImport) {
+                                        $btnImport.Add_Click({
+                                            param($btnSender, $btnE)
+                                            $exportData = $btnSender.Tag
+                                            if (-not $exportData) { return }
+
+                                            $exeFolder = Split-Path ([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName) -Parent
+                                            $exportPath = Join-Path $exeFolder "$($exportData.ClientName)\$($exportData.PCName)"
+
+                                            Write-MWLogInfo "Import rapide: $($exportData.ClientName)\$($exportData.PCName)"
+
+                                            # Passer en mode Import et remplir chemin
+                                            if ($script:UI.RbImport) { $script:UI.RbImport.IsChecked = $true }
+                                            if ($script:UI.TbImportSrc) { $script:UI.TbImportSrc.Text = $exportPath }
+
+                                            # Aller directement à la page de sélection d'applications
+                                            Show-UIPage -PageNumber 21 -Window $script:Window
+                                        })
+                                    }
+
+                                    # BOUTON EXPORT INCREMENTAL
+                                    if ($btnIncremental) {
+                                        $btnIncremental.Add_Click({
+                                            param($btnSender, $btnE)
+                                            $exportData = $btnSender.Tag
+                                            if (-not $exportData) { return }
+
+                                            Write-MWLogInfo "Export incrémentiel rapide: $($exportData.ClientName)\$($exportData.PCName)"
+
+                                            # Passer en mode Export
+                                            if ($script:UI.RbExport) { $script:UI.RbExport.IsChecked = $true }
+
+                                            # TODO: Pré-remplir les infos client/PC et activer mode incrémentiel
+                                            # Pour l'instant, juste naviguer vers page 1
+                                            Show-UIPage -PageNumber 1 -Window $script:Window
+
+                                            [System.Windows.MessageBox]::Show(
+                                                "Fonctionnalité Export Incrémentiel rapide en cours de développement.`n`nPour l'instant, veuillez configurer manuellement l'export incrémentiel.",
+                                                "Information",
+                                                'OK',
+                                                'Information'
+                                            )
+                                        })
+                                    }
+
+                                    # BOUTON SUPPRIMER
+                                    if ($btnDelete) {
+                                        $btnDelete.Add_Click({
+                                            param($btnSender, $btnE)
+                                            $exportData = $btnSender.Tag
+                                            if (-not $exportData) { return }
+
+                                            # Confirmation
+                                            $result = [System.Windows.MessageBox]::Show(
+                                                "Supprimer l'export de :`n`nClient: $($exportData.ClientName)`nPC: $($exportData.PCName)`n`nCette action est irréversible.",
+                                                "Confirmation",
+                                                'YesNo',
+                                                'Warning'
+                                            )
+
+                                            if ($result -eq 'Yes') {
+                                                $success = Remove-MWDashboardExport -ClientName $exportData.ClientName -PCName $exportData.PCName
+                                                if ($success) {
+                                                    [System.Windows.MessageBox]::Show(
+                                                        "Export supprimé avec succès.",
+                                                        "Succès",
+                                                        'OK',
+                                                        'Information'
+                                                    )
+                                                    Refresh-DashboardData
+                                                }
+                                                else {
+                                                    [System.Windows.MessageBox]::Show(
+                                                        "Erreur lors de la suppression.",
+                                                        "Erreur",
+                                                        'OK',
+                                                        'Error'
+                                                    )
+                                                }
+                                            }
+                                        })
+                                    }
+
                                     break
                                 }
                             }
                         }
                     }
-
-                    if ($deleteButton -and $deleteButton -is [System.Windows.Controls.Button]) {
-                        $deleteButton.Add_Click({
-                            param($btnSender, $btnE)
-
-                            $exportPath = $btnSender.Tag
-                            if (-not $exportPath) { return }
-
-                            # Confirmation
-                            $result = [System.Windows.MessageBox]::Show(
-                                "Voulez-vous vraiment supprimer cet export ?`n`n$exportPath`n`nCette action est irréversible.",
-                                "Confirmation de suppression",
-                                'YesNo',
-                                'Warning'
-                            )
-
-                            if ($result -eq 'Yes') {
-                                $success = Remove-MWExport -ExportPath $exportPath
-                                if ($success) {
-                                    [System.Windows.MessageBox]::Show(
-                                        "Export supprimé avec succès.",
-                                        "Suppression réussie",
-                                        'OK',
-                                        'Information'
-                                    )
-
-                                    # Rafraîchir le dashboard
-                                    Refresh-DashboardData
-                                }
-                                else {
-                                    [System.Windows.MessageBox]::Show(
-                                        "Erreur lors de la suppression de l'export.",
-                                        "Erreur",
-                                        'OK',
-                                        'Error'
-                                    )
-                                }
-                            }
-                        })
-                    }
                 }
-            }
-        })
-
-        # Handler: Double-clic sur une ligne pour lancer l'import
-        $dgDashExports.Add_MouseDoubleClick({
-            param($sender, $e)
-
-            try {
-                # Récupérer l'export sélectionné
-                $selectedExport = $sender.SelectedItem
-                if (-not $selectedExport) { return }
-
-                $exportPath = $selectedExport.Path
-                if (-not $exportPath -or -not (Test-Path $exportPath)) {
-                    [System.Windows.MessageBox]::Show(
-                        "Le chemin de l'export est invalide ou introuvable.",
-                        "Erreur",
-                        'OK',
-                        'Error'
-                    )
-                    return
-                }
-
-                Write-MWLogInfo "Double-clic sur export: $($selectedExport.ClientName) - Lancement import"
-
-                # Passer en mode Import et remplir le chemin
-                if ($script:UI.RbImport) {
-                    $script:UI.RbImport.IsChecked = $true
-                }
-                if ($script:UI.TbImportSrc) {
-                    $script:UI.TbImportSrc.Text = $exportPath
-                }
-
-                # Naviguer simplement vers la page de choix mode (page 1)
-                # L'utilisateur devra juste cliquer "Suivant" mais le chemin sera déjà rempli
-                Show-UIPage -PageNumber 1 -Window $script:Window
-            }
-            catch {
-                Write-MWLogError "Erreur double-clic Dashboard: $_"
             }
         })
     }
@@ -902,7 +908,7 @@ function Initialize-Dashboard {
         Refresh-DashboardData
     }
     catch {
-        Write-MWLogError "Erreur lors du rafraîchissement du Dashboard: $_"
+        Write-MWLogError "Erreur rafraîchissement Dashboard: $_"
     }
 
     Write-MWLogInfo "Dashboard initialisé"

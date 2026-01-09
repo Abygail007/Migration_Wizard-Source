@@ -318,21 +318,47 @@
                     </Style>
                   </DataGrid.RowStyle>
                   <DataGrid.Columns>
-                    <DataGridTextColumn Header="Client" Binding="{Binding ClientName}" Width="150" CanUserResize="True"/>
-                    <DataGridTextColumn Header="PC Source" Binding="{Binding SourcePC}" Width="180" CanUserResize="True"/>
-                    <DataGridTextColumn Header="Lecteur" Binding="{Binding Drive}" Width="80" CanUserResize="True"/>
-                    <DataGridTextColumn Header="Date Export" Binding="{Binding ExportDate}" Width="150" CanUserResize="True"/>
-                    <DataGridTextColumn Header="Date Import" Binding="{Binding ImportDate}" Width="150" CanUserResize="True"/>
-                    <DataGridTextColumn Header="Taille" Binding="{Binding SizeGB, StringFormat='{}{0:N2} GB'}" Width="100" CanUserResize="True"/>
-                    <DataGridTemplateColumn Header="Actions" Width="120" CanUserResize="False">
+                    <DataGridTextColumn Header="Client" Binding="{Binding ClientName}" Width="120" CanUserResize="True"/>
+                    <DataGridTextColumn Header="PC" Binding="{Binding PCName}" Width="140" CanUserResize="True"/>
+                    <DataGridTextColumn Header="Type" Binding="{Binding ExportType}" Width="100" CanUserResize="True"/>
+                    <DataGridTextColumn Header="Exporté le" Binding="{Binding ExportDate}" Width="120" CanUserResize="True"/>
+                    <DataGridTextColumn Header="Importé le" Binding="{Binding ImportDate}" Width="120" CanUserResize="True"/>
+                    <DataGridTextColumn Header="Taille" Binding="{Binding SizeGB, StringFormat='{}{0:N2} GB'}" Width="80" CanUserResize="True"/>
+                    <DataGridTemplateColumn Header="Actions" Width="320" CanUserResize="False">
                       <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                          <Button Content=" Supprimer"
-                                  Tag="{Binding Path}"
-                                  Padding="6,2"
-                                  Foreground="#ef4444"
-                                  BorderBrush="#ef4444"
-                                  FontSize="11"/>
+                          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Name="btnDashImport"
+                                    Content="📥 Import"
+                                    Tag="{Binding}"
+                                    Padding="8,4"
+                                    Margin="2,0"
+                                    Background="#10b981"
+                                    Foreground="White"
+                                    BorderBrush="#10b981"
+                                    FontSize="11"
+                                    Cursor="Hand"/>
+                            <Button Name="btnDashIncremental"
+                                    Content="📦 Export Inc."
+                                    Tag="{Binding}"
+                                    Padding="8,4"
+                                    Margin="2,0"
+                                    Background="#3b82f6"
+                                    Foreground="White"
+                                    BorderBrush="#3b82f6"
+                                    FontSize="11"
+                                    Cursor="Hand"/>
+                            <Button Name="btnDashDelete"
+                                    Content="🗑 Suppr."
+                                    Tag="{Binding}"
+                                    Padding="8,4"
+                                    Margin="2,0"
+                                    Background="#ef4444"
+                                    Foreground="White"
+                                    BorderBrush="#ef4444"
+                                    FontSize="11"
+                                    Cursor="Hand"/>
+                          </StackPanel>
                         </DataTemplate>
                       </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

@@ -226,6 +226,33 @@ function Export-MWProfile {
         }
         # ========================================
 
+        # Enregistrer dans l'historique Dashboard
+        try {
+            $exeFolder = Split-Path ([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName) -Parent
+            $relativePath = $DestinationFolder.Replace($exeFolder, '.').TrimStart('\')
+
+            # Extraire Client et PC depuis le chemin (format: ExeFolder\Client\PC)
+            $pathParts = $DestinationFolder.Replace($exeFolder, '').Trim('\').Split('\')
+            if ($pathParts.Count -ge 2) {
+                $clientName = $pathParts[0]
+                $pcName = $pathParts[1]
+
+                # Calculer la taille de l'export
+                $exportSize = Get-MWExportSize -ExportPath $DestinationFolder
+
+                # Déterminer le type d'export
+                $exportType = if ($IncrementalMode) { 'Incrementiel' } else { 'Principal' }
+
+                # Ajouter à l'historique
+                Add-MWDashboardExport -ClientName $clientName -PCName $pcName -ExportType $exportType -SizeBytes $exportSize -RelativePath $relativePath
+                Write-MWLogInfo "Export enregistré dans l'historique Dashboard: $clientName\$pcName ($exportType)"
+            }
+        }
+        catch {
+            Write-MWLogWarning "Impossible d'enregistrer l'export dans l'historique Dashboard: $_"
+            # Non bloquant
+        }
+
         & $updateUI "Export terminé !" 100
         Write-MWLogInfo "=== Fin Export-MWProfile ==="
     } catch {
@@ -416,6 +443,26 @@ function Import-MWProfile {
             Write-MWLogInfo "ImportMetadata.json créé : $importMetadataPath"
         } catch {
             Write-MWLogWarning "Impossible de créer ImportMetadata.json : $($_.Exception.Message)"
+        }
+
+        # Mettre à jour l'historique Dashboard avec les infos d'import
+        try {
+            $exeFolder = Split-Path ([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName) -Parent
+
+            # Extraire Client et PC depuis le chemin source (format: ExeFolder\Client\PC)
+            $pathParts = $SourceFolder.Replace($exeFolder, '').Trim('\').Split('\')
+            if ($pathParts.Count -ge 2) {
+                $clientName = $pathParts[0]
+                $pcName = $pathParts[1]
+
+                # Mettre à jour l'historique Dashboard
+                Update-MWDashboardImport -ClientName $clientName -PCName $pcName -ImportedBy $env:USERNAME -ImportedOnPC $env:COMPUTERNAME
+                Write-MWLogInfo "Import enregistré dans l'historique Dashboard: $clientName\$pcName"
+            }
+        }
+        catch {
+            Write-MWLogWarning "Impossible de mettre à jour l'historique Dashboard: $_"
+            # Non bloquant
         }
 
         Write-MWLogInfo "=== Fin Import-MWProfile ==="
