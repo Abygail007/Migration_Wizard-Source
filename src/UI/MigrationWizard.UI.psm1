@@ -717,7 +717,7 @@ function Initialize-Dashboard {
     $txtDashLastImportDate = $script:Window.FindName('txtDashLastImportDate')
 
     # Fonction pour rafraîchir le dashboard
-    $refreshDashboard = {
+    function Refresh-DashboardData {
         Write-MWLogInfo "Rafraîchissement du Dashboard..."
 
         # Récupérer la liste des exports
@@ -775,7 +775,9 @@ function Initialize-Dashboard {
 
     # Handler: Bouton Actualiser
     if ($btnDashRefresh) {
-        $btnDashRefresh.Add_Click($refreshDashboard)
+        $btnDashRefresh.Add_Click({
+            Refresh-DashboardData
+        })
     }
 
     # Handler: Bouton Commencer
@@ -838,7 +840,7 @@ function Initialize-Dashboard {
                                     )
 
                                     # Rafraîchir le dashboard
-                                    & $refreshDashboard
+                                    Refresh-DashboardData
                                 }
                                 else {
                                     [System.Windows.MessageBox]::Show(
@@ -895,9 +897,9 @@ function Initialize-Dashboard {
         })
     }
 
-    # Rafraîchir au démarrage (synchrone - async ne fonctionne pas avec variables locales)
+    # Rafraîchir au démarrage
     try {
-        & $refreshDashboard
+        Refresh-DashboardData
     }
     catch {
         Write-MWLogError "Erreur lors du rafraîchissement du Dashboard: $_"
